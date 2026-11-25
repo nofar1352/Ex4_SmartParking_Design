@@ -1,0 +1,29 @@
+@startuml
+title Sequence Diagram 2 - EV Charging 30-Minute Idle Penalty
+participant ":IdlePenaltyScheduler" as Timer <<system>>
+control ":EvBillingControl" as Billing
+entity "session : ChargingSession" as Session
+entity "fine : Violation" as Fine
+boundary ":SmsGatewayBoundary" as SMS
+Timer -> Billing : applyIdlePenalties()
+activate Billing
+loop [for each completed ChargingSession]
+    Billing -> Session : isIdleOver30Minutes()
+    activate Session
+    Session --> Billing : overdue
+    deactivate Session
+    alt [overdue == true and isPhysicallyOccupied == true]
+        create Fine
+        Billing -> Fine : <<create>> (5.0 NIS/hr)
+        activate Fine
+        Fine --> Billing : fine
+        deactivate Fine
+        Billing -> SMS : sendSmsAlert(phoneNumber, "Idle penalty of 5 NIS/hr applied.")
+        activate SMS
+        deactivate SMS
+    end
+end
+deactivate Billing
+' IdlePenaltyScheduler and penalty SMS are included as explicitly requested.
+' SYSTEM_STORY specifies SMS upon charging completion.
+@enduml
